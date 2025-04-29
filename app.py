@@ -19,6 +19,7 @@ company_logo = st.file_uploader("Upload company logo (PNG or JPG)", type=["png",
 
 # Predefined fields
 product_name = st.text_input("Product Name")
+Short_Description=st.text_input("Description")
 sensor_type = st.selectbox("Sensor Type", ["Temperature", "Pressure", "Gas", "Accelerometer", "Other"])
 dimensions = st.text_input("Dimensions (e.g., 50×30×10 mm)")
 weight = st.text_input("Weight (g)")
