@@ -127,7 +127,15 @@ Provided information:
         # --- DOCX export ---
         docx_buffer = BytesIO()
         doc = Document()
-        doc.add_heading(product_name or "Datasheet", 0)
+        if company_logo:
+            from PIL import Image
+            from docx.shared import Inches
+            image = Image.open(company_logo)
+            image_path = "/tmp/logo.png"
+            image.save(image_path)
+
+    doc.add_picture(image_path, width=Inches(1.5))
+
         for line in datasheet.splitlines():
             if line.startswith("###") or line.startswith("##") or line.startswith("#"):
                 doc.add_heading(line.strip("# "), level=2)
@@ -146,6 +154,13 @@ Provided information:
         # --- PDF export ---
         pdf = FPDF()
         pdf.add_page()
+        if company_logo:
+            import tempfile
+            logo_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            logo_temp.write(company_logo.getvalue())
+            logo_temp.flush()
+            pdf.image(logo_temp.name, x=10, y=8, w=30)
+            pdf.set_y(30)
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.set_font("Arial", size=11)
         for line in datasheet.splitlines():
