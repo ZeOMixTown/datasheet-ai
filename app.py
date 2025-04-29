@@ -17,6 +17,7 @@ st.header("1. Product Input")
 # Logo upload
 company_logo = st.file_uploader("Upload company logo (PNG or JPG)", type=["png", "jpg", "jpeg"])
 
+# Predefined fields
 product_name = st.text_input("Product Name")
 sensor_type = st.selectbox("Sensor Type", ["Temperature", "Pressure", "Gas", "Accelerometer", "Other"])
 dimensions = st.text_input("Dimensions (e.g., 50×30×10 mm)")
@@ -27,43 +28,28 @@ sensitivity = st.text_input("Sensitivity (e.g., 10 mV/°C)")
 accuracy = st.text_input("Accuracy (e.g., ±1°C)")
 response_time = st.text_input("Response Time (e.g., <1s)")
 signal_type = st.text_input("Output Signal (e.g., Analog / I2C / SPI)")
-
 features = st.text_area("Key Features (comma separated)")
 applications = st.text_area("Target Applications (comma separated)")
 
-# Optional custom parameters
+# --- Optional custom parameters ---
 st.markdown("#### ➕ Optional Custom Parameters")
-
-# Dictionary to store custom key-value fields
 custom_fields = {}
-
-# User selects how many custom fields to define
 custom_count = st.number_input("How many custom fields?", min_value=0, max_value=10, step=1)
 
-# Dynamically render input fields based on user's selection
 for i in range(int(custom_count)):
     col1, col2 = st.columns(2)
     with col1:
-        field_name = st.text_input(f"Field #{i+1} - Name", key=f"cf_key_{i}")
+        key_name = st.text_input(f"Custom Field Name #{i+1}", key=f"cf_k_{i}")
     with col2:
-        field_value = st.text_input(f"Field #{i+1} - Value", key=f"cf_val_{i}")
-    
-    # Only include filled fields
-    if field_name and field_value:
-        custom_fields[field_name] = field_value
-
-
-for i in range(int(custom_count)):
-    field_name = st.text_input(f"Custom Field #{i+1} Name", key=f"cf_key_{i}")
-    field_value = st.text_input(f"Custom Field #{i+1} Value", key=f"cf_val_{i}")
-    if field_name and field_value:
-        custom_fields[field_name] = field_value
+        key_value = st.text_input(f"Custom Field Value #{i+1}", key=f"cf_v_{i}")
+    if key_name and key_value:
+        custom_fields[key_name] = key_value
 
 # --- Datasheet generation with GPT ---
 if st.button("\U0001F527 Generate Datasheet"):
     with st.spinner("Generating content with GPT..."):
 
-        # Prompt with structure and optional fields
+        # Build prompt
         prompt = f"""
 You are a professional technical writer specializing in sensor datasheets for electronic devices.
 Generate a precise and technically accurate datasheet in clean markdown format.
@@ -106,7 +92,7 @@ Include certification standards such as CE, FCC, RoHS, ESD protection.
         for k, v in custom_fields.items():
             prompt += f"- {k}: {v}\n"
 
-        prompt += """
+        prompt += f"""
 
 ---
 
@@ -122,6 +108,7 @@ Sensor Type: {sensor_type}
 Features: {features}
 """
 
+        # Call OpenAI
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -130,14 +117,14 @@ Features: {features}
                 {"role": "user", "content": prompt}
             ]
         )
-
         datasheet = response.choices[0].message.content
 
+        # Display output
         st.success("✅ Datasheet successfully generated!")
         st.markdown("### 📘 Datasheet Preview")
         st.markdown(datasheet)
 
-        # DOCX Export
+        # --- DOCX Export ---
         docx_buffer = BytesIO()
         doc = Document()
         if company_logo:
@@ -153,11 +140,10 @@ Features: {features}
                 doc.add_paragraph(line.strip("- "), style="List Bullet")
             else:
                 doc.add_paragraph(line)
-
         doc.save(docx_buffer)
         st.download_button("⬇️ Download as DOCX", data=docx_buffer.getvalue(), file_name="datasheet.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
-        # PDF Export
+        # --- PDF Export ---
         pdf = FPDF()
         pdf.add_page()
         if company_logo:
@@ -174,5 +160,5 @@ Features: {features}
         pdf.output(pdf_buffer)
         st.download_button("⬇️ Download as PDF", data=pdf_buffer.getvalue(), file_name="datasheet.pdf", mime="application/pdf")
 
-        # TXT Export
+        # --- TXT Export ---
         st.download_button("⬇️ Download as TXT", data=datasheet, file_name="datasheet.txt", mime="text/plain")
