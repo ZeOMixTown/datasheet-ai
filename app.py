@@ -44,7 +44,7 @@ if st.button("Generate with AI"):
 
         # Use the new V1 chat API
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo"",
             messages=[
                 {"role": "system", "content": "You are a technical writer."},
                 {"role": "user", "content": prompt}
