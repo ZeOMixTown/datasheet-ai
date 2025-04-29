@@ -33,8 +33,25 @@ applications = st.text_area("Target Applications (comma separated)")
 
 # Optional custom parameters
 st.markdown("#### ➕ Optional Custom Parameters")
+
+# Dictionary to store custom key-value fields
 custom_fields = {}
+
+# User selects how many custom fields to define
 custom_count = st.number_input("How many custom fields?", min_value=0, max_value=10, step=1)
+
+# Dynamically render input fields based on user's selection
+for i in range(int(custom_count)):
+    col1, col2 = st.columns(2)
+    with col1:
+        field_name = st.text_input(f"Field #{i+1} - Name", key=f"cf_key_{i}")
+    with col2:
+        field_value = st.text_input(f"Field #{i+1} - Value", key=f"cf_val_{i}")
+    
+    # Only include filled fields
+    if field_name and field_value:
+        custom_fields[field_name] = field_value
+
 
 for i in range(int(custom_count)):
     field_name = st.text_input(f"Custom Field #{i+1} Name", key=f"cf_key_{i}")
