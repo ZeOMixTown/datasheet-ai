@@ -110,7 +110,7 @@ Features: {features}
 
 At the bottom of the datasheet, add a section called 'Recommended Additions' 
 with a bullet list of potential fields or technical data that would improve the document further. 
-For example: ESD rating, linearity error, long-term drift, storage conditions, etc.
+Add explanations why it is necessary for specific product. Recommendations have to be unique
 """
 
         # Call OpenAI
