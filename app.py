@@ -1,76 +1,53 @@
 import streamlit as st
 import openai
+from docx import Document
+from docx.shared import Pt
+from io import BytesIO
+from fpdf import FPDF
 
+# --- Streamlit page settings ---
 st.set_page_config(page_title="Datasheet Generator", layout="centered")
-st.title("📄 Datasheet Generator")
+st.title("📄 AI-Based Datasheet Generator")
 
-# --- User input section ---
-st.header("1. Enter product information")
+# --- User input form ---
+st.header("1. Product Input")
 
-product_name = st.text_input("Product name")
-dimensions = st.text_input("Dimensions (e.g. 50×30×10 mm)")
-weight = st.text_input("Weight")
-power = st.text_input("Power supply (e.g. 3.3 V / 150 mA)")
-features = st.text_area("Key features (comma separated)")
-applications = st.text_area("Target applications (comma separated)")
+product_name = st.text_input("Product Name")
+dimensions = st.text_input("Dimensions (e.g., 50×30×10 mm)")
+weight = st.text_input("Weight (g)")
+power = st.text_input("Power Supply (e.g., 3.3 V / 150 mA)")
+features = st.text_area("Key Features (comma separated)")
+applications = st.text_area("Target Applications (comma separated)")
 
 st.divider()
-st.header("2. Generate your datasheet")
+st.header("2. Generate AI Datasheet")
 
-# --- GPT generation ---
-if st.button("Generate with AI"):
-    with st.spinner("Generating datasheet..."):
+# --- Datasheet generation with GPT ---
+if st.button("🔧 Generate Datasheet"):
+    with st.spinner("Generating content with GPT..."):
 
-        # Build prompt
+        # Prompt template with proper structure and formatting instructions
         prompt = f"""
 You are a professional technical writer specializing in electronics documentation.
 Generate a concise and technically accurate datasheet for an electronic product.
-The datasheet must comply with industrial documentation standards (e.g. IEC, JEDEC, IPC) and be structured as follows:
+The datasheet must comply with industrial documentation standards (IEC, JEDEC, IPC) and be structured as follows:
 
----
-**1. Product Overview**  
-A 1–2 sentence summary of the device’s function and key attributes. Avoid marketing tone. Be objective.
+1. Product Overview
+2. Key Features (bullet points)
+3. Mechanical Specifications
+4. Electrical Characteristics
+5. Environmental Ratings
+6. Regulatory & Compliance
+7. Applications
 
-**2. Key Features**  
-A bullet list (5–10 points) describing core specifications or functions, e.g. voltage range, communication interfaces, protection features, mounting type.
+Formatting instructions:
+- Use clear section headers.
+- Use bullet lists or markdown tables where appropriate.
+- Keep it factual and concise.
+- Use SI units.
+- Do not guess values.
 
-**3. Mechanical Specifications**  
-- Dimensions (in mm, formatted as Width × Height × Depth)
-- Weight (in grams)
-- Enclosure type (if relevant)
-- Mounting type (e.g. SMD, THT, DIN rail, panel-mounted)
-
-**4. Electrical Characteristics**  
-- Operating voltage range (e.g. 3.0 V – 3.6 V)
-- Supply current or power consumption
-- Communication interfaces (e.g. UART, I2C, SPI)
-- Max load (e.g. output current or switching power)
-
-**5. Environmental Ratings**  
-- Operating temperature range (°C)
-- Storage temperature range (optional)
-- IP protection level (if relevant)
-- Humidity tolerance (optional)
-
-**6. Regulatory & Compliance**  
-- CE / FCC / RoHS status
-- ESD protection (if applicable)
-- Safety certifications (e.g. UL 94V-0)
-
-**7. Applications**  
-Bullet list of common use cases or application domains (e.g. battery-powered devices, industrial monitoring, IoT nodes)
-
----
-
-**Formatting Instructions:**
-- Use markdown
-- Do not include unnecessary creative phrases
-- Use SI units consistently
-- Never guess unspecified values
-- If a value is missing, omit the line
-
----
-Input component information:
+Component Info:
 Name: {product_name}
 Dimensions: {dimensions}
 Weight: {weight}
@@ -79,26 +56,63 @@ Features: {features}
 Applications: {applications}
 """
 
-
-        # Load API key from secrets (defined in Streamlit Cloud or .streamlit/secrets.toml)
+        # Call OpenAI with updated API (version >= 1.0.0)
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-        # Use the new V1 chat API
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",  # or "gpt-4" if available
             messages=[
                 {"role": "system", "content": "You are a technical writer."},
                 {"role": "user", "content": prompt}
             ]
         )
 
-        # Extract generated text
         datasheet = response.choices[0].message.content
 
-        # Display result
-        st.success("Done!")
-        st.markdown("### ✨ Generated Datasheet")
+        # --- Show result in app ---
+        st.success("✅ Datasheet successfully generated!")
+        st.markdown("### 📘 Datasheet Preview")
         st.markdown(datasheet)
 
-        # Add download button
-        st.download_button("Download as .txt", data=datasheet, file_name="datasheet.txt")
+        # --- DOCX export ---
+        docx_buffer = BytesIO()
+        doc = Document()
+        doc.add_heading(product_name or "Datasheet", 0)
+        for line in datasheet.splitlines():
+            if line.startswith("###") or line.startswith("##") or line.startswith("#"):
+                doc.add_heading(line.strip("# "), level=2)
+            elif line.startswith("-"):
+                doc.add_paragraph(line.strip("- "), style="List Bullet")
+            else:
+                doc.add_paragraph(line)
+        doc.save(docx_buffer)
+        st.download_button(
+            label="⬇️ Download as DOCX",
+            data=docx_buffer.getvalue(),
+            file_name="datasheet.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+        # --- PDF export ---
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.set_font("Arial", size=11)
+        for line in datasheet.splitlines():
+            pdf.multi_cell(0, 10, line)
+        pdf_buffer = BytesIO()
+        pdf.output(pdf_buffer)
+        st.download_button(
+            label="⬇️ Download as PDF",
+            data=pdf_buffer.getvalue(),
+            file_name="datasheet.pdf",
+            mime="application/pdf"
+        )
+
+        # --- TXT export ---
+        st.download_button(
+            label="⬇️ Download as TXT",
+            data=datasheet,
+            file_name="datasheet.txt",
+            mime="text/plain"
+        )
