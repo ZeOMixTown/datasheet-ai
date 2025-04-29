@@ -107,6 +107,10 @@ Include certification standards such as CE, FCC, RoHS, ESD protection.
 Product Name: {product_name}
 Sensor Type: {sensor_type}
 Features: {features}
+
+At the bottom of the datasheet, add a section called 'Recommended Additions' 
+with a bullet list of potential fields or technical data that would improve the document further. 
+For example: ESD rating, linearity error, long-term drift, storage conditions, etc.
 """
 
         # Call OpenAI
