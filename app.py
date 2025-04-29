@@ -12,15 +12,23 @@ st.title("📄 AI-Based Datasheet Generator")
 # --- User input form ---
 st.header("1. Product Input")
 
+# Logo upload
+company_logo = st.file_uploader("Upload company logo (PNG or JPG)", type=["png", "jpg", "jpeg"])
+
 product_name = st.text_input("Product Name")
+sensor_type = st.selectbox("Sensor Type", ["Temperature", "Pressure", "Gas", "Accelerometer", "Other"])
 dimensions = st.text_input("Dimensions (e.g., 50×30×10 mm)")
 weight = st.text_input("Weight (g)")
 power = st.text_input("Power Supply (e.g., 3.3 V / 150 mA)")
+measurement_range = st.text_input("Measurement Range (e.g., -40°C to 125°C)")
+sensitivity = st.text_input("Sensitivity (e.g., 10 mV/°C)")
+accuracy = st.text_input("Accuracy (e.g., ±1°C)")
+response_time = st.text_input("Response Time (e.g., <1s)")
+signal_type = st.text_input("Output Signal (e.g., Analog / I2C / SPI)")
+
 features = st.text_area("Key Features (comma separated)")
 applications = st.text_area("Target Applications (comma separated)")
 
-st.divider()
-st.header("2. Generate AI Datasheet")
 
 # --- Datasheet generation with GPT ---
 if st.button("🔧 Generate Datasheet"):
@@ -28,32 +36,74 @@ if st.button("🔧 Generate Datasheet"):
 
         # Prompt template with proper structure and formatting instructions
         prompt = f"""
-You are a professional technical writer specializing in electronics documentation.
-Generate a concise and technically accurate datasheet for an electronic product.
+You are a professional technical writer specializing in sensor datasheets for electronic devices.
+Generate a precise and technically accurate datasheet in clean markdown format.
 The datasheet must comply with industrial documentation standards (IEC, JEDEC, IPC) and be structured as follows:
 
-1. Product Overview
-2. Key Features (bullet points)
-3. Mechanical Specifications
-4. Electrical Characteristics
-5. Environmental Ratings
-6. Regulatory & Compliance
-7. Applications
+---
 
-Formatting instructions:
-- Use clear section headers.
-- Use bullet lists or markdown tables where appropriate.
-- Keep it factual and concise.
+### 1. Product Overview
+Provide a short, factual description (1–2 sentences) of the sensor’s purpose and main capabilities.
+
+### 2. Key Features
+Provide 5–10 concise bullet points with product highlights. Avoid duplication from other sections.
+
+### 3. Mechanical Specifications
+Present the following:
+- Dimensions: {dimensions}
+- Weight: {weight}
+- Mounting Type (if applicable)
+
+### 4. Electrical Characteristics
+Include:
+- Power Supply: {power}
+- Output Signal Type: {signal_type}
+
+### 5. Sensing Performance
+Detail the following:
+- Measurement Range: {measurement_range}
+- Sensitivity: {sensitivity}
+- Accuracy: {accuracy}
+- Response Time: {response_time}
+
+### 6. Environmental Ratings
+Include any applicable items:
+- Operating Temperature
+- IP Rating
+- Humidity Range
+
+### 7. Regulatory & Compliance
+List any certifications, such as:
+- CE, RoHS, FCC, UL
+- ESD protection
+
+### 8. Applications
+List relevant usage domains:
+{applications}
+
+---
+
+**Formatting instructions:**
+- Use markdown headings and bullet points where appropriate.
+- Keep tone strictly technical and formal (no marketing language).
 - Use SI units.
-- Do not guess values.
+- If a field is empty, omit that line entirely.
+- Never invent data — use only provided input.
 
-Component Info:
-Name: {product_name}
-Dimensions: {dimensions}
-Weight: {weight}
-Power: {power}
-Features: {features}
-Applications: {applications}
+---
+Provided information:
+- Product Name: {product_name}
+- Sensor Type: {sensor_type}
+- Dimensions: {dimensions}
+- Weight: {weight}
+- Power: {power}
+- Measurement Range: {measurement_range}
+- Sensitivity: {sensitivity}
+- Accuracy: {accuracy}
+- Response Time: {response_time}
+- Output Signal Type: {signal_type}
+- Features: {features}
+- Applications: {applications}
 """
 
         # Call OpenAI with updated API (version >= 1.0.0)
