@@ -135,14 +135,13 @@ Provided information:
             image.save(image_path)
 
     doc.add_picture(image_path, width=Inches(1.5))
-
-        for line in datasheet.splitlines():
-            if line.startswith("###") or line.startswith("##") or line.startswith("#"):
-                doc.add_heading(line.strip("# "), level=2)
-            elif line.startswith("-"):
-                doc.add_paragraph(line.strip("- "), style="List Bullet")
-            else:
-                doc.add_paragraph(line)
+    for line in datasheet.splitlines():
+        if line.startswith("###") or line.startswith("##") or line.startswith("#"):
+            doc.add_heading(line.strip("# "), level=2)
+        elif line.startswith("-"):
+            doc.add_paragraph(line.strip("- "), style="List Bullet")
+        else:
+            doc.add_paragraph(line)
         doc.save(docx_buffer)
         st.download_button(
             label="⬇️ Download as DOCX",
