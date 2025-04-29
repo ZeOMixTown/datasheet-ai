@@ -23,21 +23,62 @@ if st.button("Generate with AI"):
 
         # Build prompt
         prompt = f"""
-        Create a short professional datasheet based on the following product details:
+You are a professional technical writer specializing in electronics documentation.
+Generate a concise and technically accurate datasheet for an electronic product.
+The datasheet must comply with industrial documentation standards (e.g. IEC, JEDEC, IPC) and be structured as follows:
 
-        Name: {product_name}
-        Dimensions: {dimensions}
-        Weight: {weight}
-        Power: {power}
-        Features: {features}
-        Applications: {applications}
+---
+**1. Product Overview**  
+A 1–2 sentence summary of the device’s function and key attributes. Avoid marketing tone. Be objective.
 
-        Include:
-        - A short description
-        - A bullet list of key features
-        - A list of use cases
-        - Present it in clean markdown formatting.
-        """
+**2. Key Features**  
+A bullet list (5–10 points) describing core specifications or functions, e.g. voltage range, communication interfaces, protection features, mounting type.
+
+**3. Mechanical Specifications**  
+- Dimensions (in mm, formatted as Width × Height × Depth)
+- Weight (in grams)
+- Enclosure type (if relevant)
+- Mounting type (e.g. SMD, THT, DIN rail, panel-mounted)
+
+**4. Electrical Characteristics**  
+- Operating voltage range (e.g. 3.0 V – 3.6 V)
+- Supply current or power consumption
+- Communication interfaces (e.g. UART, I2C, SPI)
+- Max load (e.g. output current or switching power)
+
+**5. Environmental Ratings**  
+- Operating temperature range (°C)
+- Storage temperature range (optional)
+- IP protection level (if relevant)
+- Humidity tolerance (optional)
+
+**6. Regulatory & Compliance**  
+- CE / FCC / RoHS status
+- ESD protection (if applicable)
+- Safety certifications (e.g. UL 94V-0)
+
+**7. Applications**  
+Bullet list of common use cases or application domains (e.g. battery-powered devices, industrial monitoring, IoT nodes)
+
+---
+
+**Formatting Instructions:**
+- Use markdown
+- Do not include unnecessary creative phrases
+- Use SI units consistently
+- Never guess unspecified values
+- If a value is missing, omit the line
+
+---
+Input component information:
+Name: {product_name}
+Dimensions: {dimensions}
+Weight: {weight}
+Power: {power}
+Features: {features}
+Applications: {applications}
+"""
+
 
         # Load API key from secrets (defined in Streamlit Cloud or .streamlit/secrets.toml)
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
