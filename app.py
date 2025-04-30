@@ -1,10 +1,11 @@
 import streamlit as st
 import openai
 from docx import Document
-from docx.shared import Pt
+from docx.shared import Inches
 from io import BytesIO
 from PIL import Image
 import tempfile
+from fpdf import FPDF
 
 # --- Streamlit page settings ---
 st.set_page_config(page_title="Datasheet Generator", layout="centered")
@@ -28,7 +29,7 @@ signal_type = st.text_input("Output Signal (e.g., Analog / I2C / SPI)")
 features = st.text_area("Key Features (comma separated)")
 applications = st.text_area("Target Applications (comma separated)")
 
-# Optional custom parameters
+# --- Optional custom parameters ---
 st.markdown("#### ➕ Optional Custom Parameters")
 custom_fields = {}
 custom_count = st.number_input("How many custom fields?", min_value=0, max_value=10, step=1)
@@ -95,47 +96,37 @@ Applications: {applications}
         st.markdown("### 📄 Preview")
         st.markdown(datasheet_text)
 
-        # Generate final .docx file from template
-        from docx import Document
-        from docx.shared import Inches
-        import os
-
-        template_path = "Sensor_Datasheet_Template_Full.docx"
-        doc = Document(template_path)
-
-        # Replace text placeholders manually (example for title)
+        # Load template and insert values
+        doc = Document("Sensor_Datasheet_Template_Full.docx")
         for para in doc.paragraphs:
             if "<Product Name>" in para.text:
                 para.text = para.text.replace("<Product Name>", product_name)
             if "<Short Description>" in para.text:
                 para.text = para.text.replace("<Short Description>", description)
 
-        # Fill tables based on headers
         for table in doc.tables:
-            header = table.rows[0].cells[0].text.strip()
             for row in table.rows[1:]:
-                param = row.cells[0].text.strip()
-                if param.lower() == "dimensions" and dimensions:
+                param = row.cells[0].text.strip().lower()
+                if param == "dimensions" and dimensions:
                     row.cells[1].text = dimensions
-                elif param.lower() == "weight" and weight:
+                elif param == "weight" and weight:
                     row.cells[1].text = weight
-                elif param.lower() == "power supply" and power:
+                elif param == "power supply" and power:
                     row.cells[1].text = power
-                elif param.lower() == "output signal" and signal_type:
+                elif param == "output signal" and signal_type:
                     row.cells[1].text = signal_type
-                elif param.lower() == "measurement range" and measurement_range:
+                elif param == "measurement range" and measurement_range:
                     row.cells[1].text = measurement_range
-                elif param.lower() == "sensitivity" and sensitivity:
+                elif param == "sensitivity" and sensitivity:
                     row.cells[1].text = sensitivity
-                elif param.lower() == "accuracy" and accuracy:
+                elif param == "accuracy" and accuracy:
                     row.cells[1].text = accuracy
-                elif param.lower() == "response time" and response_time:
+                elif param == "response time" and response_time:
                     row.cells[1].text = response_time
                 else:
                     if not row.cells[1].text.strip():
                         row._element.getparent().remove(row._element)
 
-        # Append Recommended Additions at the end
         doc.add_heading("Recommended Additions", level=2)
         in_section = False
         for line in datasheet_text.splitlines():
@@ -148,7 +139,25 @@ Applications: {applications}
                 elif line.strip() == "" or line.strip().startswith("###"):
                     break
 
-        # Export docx
         docx_buffer = BytesIO()
         doc.save(docx_buffer)
         st.download_button("⬇️ Download Filled DOCX Draft", data=docx_buffer.getvalue(), file_name="sensor-datasheet-draft.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+        # --- PDF Export ---
+        pdf = FPDF()
+        pdf.add_page()
+        if company_logo:
+            logo_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            image = Image.open(company_logo).convert("RGB")
+            image.save(logo_temp, format="PNG")
+            logo_temp.flush()
+            pdf.image(logo_temp.name, x=10, y=8, w=30)
+            pdf.set_y(30)
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.set_font("Arial", size=11)
+        for line in datasheet_text.splitlines():
+            pdf.multi_cell(0, 10, line)
+        pdf_buffer = BytesIO()
+        pdf_output = pdf.output(dest='S').encode('latin-1')
+        pdf_buffer.write(pdf_output)
+        st.download_button("⬇️ Download as PDF", data=pdf_buffer.getvalue(), file_name="datasheet.pdf", mime="application/pdf")
