@@ -1,25 +1,21 @@
 import streamlit as st
 import openai
 from docx import Document
-from docx.shared import Pt, Inches
+from docx.shared import Pt
 from io import BytesIO
-from fpdf import FPDF
 from PIL import Image
 import tempfile
 
 # --- Streamlit page settings ---
 st.set_page_config(page_title="Datasheet Generator", layout="centered")
-st.title("\U0001F4C4 AI-Based Datasheet Generator")
+st.title("📄 AI-Based Datasheet Generator")
 
 # --- User input form ---
 st.header("1. Product Input")
 
-# Logo upload
 company_logo = st.file_uploader("Upload company logo (PNG or JPG)", type=["png", "jpg", "jpeg"])
-
-# Predefined fields
 product_name = st.text_input("Product Name")
-Short_Description=st.text_input("Description")
+description = st.text_area("Short Description")
 sensor_type = st.selectbox("Sensor Type", ["Temperature", "Pressure", "Gas", "Accelerometer", "Other"])
 dimensions = st.text_input("Dimensions (e.g., 50×30×10 mm)")
 weight = st.text_input("Weight (g)")
@@ -32,7 +28,7 @@ signal_type = st.text_input("Output Signal (e.g., Analog / I2C / SPI)")
 features = st.text_area("Key Features (comma separated)")
 applications = st.text_area("Target Applications (comma separated)")
 
-# --- Optional custom parameters ---
+# Optional custom parameters
 st.markdown("#### ➕ Optional Custom Parameters")
 custom_fields = {}
 custom_count = st.number_input("How many custom fields?", min_value=0, max_value=10, step=1)
@@ -47,73 +43,44 @@ for i in range(int(custom_count)):
         custom_fields[key_name] = key_value
 
 # --- Datasheet generation with GPT ---
-if st.button("\U0001F527 Generate Datasheet"):
+if st.button("Generate Draft Datasheet"):
     with st.spinner("Generating content with GPT..."):
-
-        # Build prompt
+        # Compose prompt
         prompt = f"""
-You are a professional technical writer specializing in sensor datasheets for electronic devices.
-Generate a precise and technically accurate datasheet in clean markdown format.
-The datasheet must comply with industrial documentation standards (IEC, JEDEC, IPC) and be structured as follows:
+You are a professional technical writer specializing in sensor datasheets.
+Generate a technical datasheet in clean markdown format, with the following structure and a section of "Recommended Additions" at the end:
+
+1. Product Overview
+2. Key Features
+3. Applications
+4. Absolute Maximum Ratings
+5. Electrical Characteristics
+6. Mechanical Dimensions
+7. Output Interface
+8. Additional Specifications
+9. Recommended Additions
+
+Respond in clean markdown. Do not guess missing values.
 
 ---
-
-### 1. Product Overview
-Provide a short, factual description (1–2 sentences) of the sensor’s purpose and main capabilities.
-
-### 2. Key Features
-Provide 5–10 concise bullet points with product highlights.
-
-### 3. Mechanical Specifications
-- Dimensions: {dimensions}
-- Weight: {weight}
-- Mounting Type (if applicable)
-
-### 4. Electrical Characteristics
-- Power Supply: {power}
-- Output Signal Type: {signal_type}
-
-### 5. Sensing Performance
-- Measurement Range: {measurement_range}
-- Sensitivity: {sensitivity}
-- Accuracy: {accuracy}
-- Response Time: {response_time}
-
-### 6. Environmental Ratings
-Include any applicable items (e.g., operating temp, IP rating).
-
-### 7. Regulatory & Compliance
-Include certification standards such as CE, FCC, RoHS, ESD protection.
-
-### 8. Applications
-{applications}
-
-### 9. Additional Specifications
+Input:
+Name: {product_name}
+Description: {description}
+Sensor Type: {sensor_type}
+Dimensions: {dimensions}
+Weight: {weight}
+Power: {power}
+Measurement Range: {measurement_range}
+Sensitivity: {sensitivity}
+Accuracy: {accuracy}
+Response Time: {response_time}
+Output Signal: {signal_type}
+Features: {features}
+Applications: {applications}
 """
         for k, v in custom_fields.items():
-            prompt += f"- {k}: {v}\n"
+            prompt += f"{k}: {v}\n"
 
-        prompt += f"""
-
----
-
-**Formatting instructions:**
-- Use markdown headings and bullet points.
-- Keep tone technical and formal.
-- Use SI units.
-- Do not guess missing values.
-
----
-Product Name: {product_name}
-Sensor Type: {sensor_type}
-Features: {features}
-
-At the bottom of the datasheet, add a section called 'Recommended Additions' 
-with a bullet list of potential fields or technical data that would improve the document further. 
-Add explanations why it is necessary for specific product. Recommendations have to be unique
-"""
-
-        # Call OpenAI
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -122,48 +89,66 @@ Add explanations why it is necessary for specific product. Recommendations have 
                 {"role": "user", "content": prompt}
             ]
         )
-        datasheet = response.choices[0].message.content
+        datasheet_text = response.choices[0].message.content
 
-        # Display output
-        st.success("✅ Datasheet successfully generated!")
-        st.markdown("### 📘 Datasheet Preview")
-        st.markdown(datasheet)
+        st.success("✅ Draft Datasheet Generated")
+        st.markdown("### 📄 Preview")
+        st.markdown(datasheet_text)
 
-        # --- DOCX Export ---
+        # Generate final .docx file from template
+        from docx import Document
+        from docx.shared import Inches
+        import os
+
+        template_path = "Sensor_Datasheet_Template_Full.docx"
+        doc = Document(template_path)
+
+        # Replace text placeholders manually (example for title)
+        for para in doc.paragraphs:
+            if "<Product Name>" in para.text:
+                para.text = para.text.replace("<Product Name>", product_name)
+            if "<Short Description>" in para.text:
+                para.text = para.text.replace("<Short Description>", description)
+
+        # Fill tables based on headers
+        for table in doc.tables:
+            header = table.rows[0].cells[0].text.strip()
+            for row in table.rows[1:]:
+                param = row.cells[0].text.strip()
+                if param.lower() == "dimensions" and dimensions:
+                    row.cells[1].text = dimensions
+                elif param.lower() == "weight" and weight:
+                    row.cells[1].text = weight
+                elif param.lower() == "power supply" and power:
+                    row.cells[1].text = power
+                elif param.lower() == "output signal" and signal_type:
+                    row.cells[1].text = signal_type
+                elif param.lower() == "measurement range" and measurement_range:
+                    row.cells[1].text = measurement_range
+                elif param.lower() == "sensitivity" and sensitivity:
+                    row.cells[1].text = sensitivity
+                elif param.lower() == "accuracy" and accuracy:
+                    row.cells[1].text = accuracy
+                elif param.lower() == "response time" and response_time:
+                    row.cells[1].text = response_time
+                else:
+                    if not row.cells[1].text.strip():
+                        row._element.getparent().remove(row._element)
+
+        # Append Recommended Additions at the end
+        doc.add_heading("Recommended Additions", level=2)
+        in_section = False
+        for line in datasheet_text.splitlines():
+            if line.strip().lower().startswith("### recommended additions"):
+                in_section = True
+                continue
+            if in_section:
+                if line.strip().startswith("-"):
+                    doc.add_paragraph(line.strip("- ").strip(), style="List Bullet")
+                elif line.strip() == "" or line.strip().startswith("###"):
+                    break
+
+        # Export docx
         docx_buffer = BytesIO()
-        doc = Document()
-        if company_logo:
-            image = Image.open(company_logo)
-            image_path = "/tmp/logo.png"
-            image.save(image_path)
-            doc.add_picture(image_path, width=Inches(1.5))
-
-        for line in datasheet.splitlines():
-            if line.startswith("###") or line.startswith("##") or line.startswith("#"):
-                doc.add_heading(line.strip("# "), level=2)
-            elif line.startswith("-"):
-                doc.add_paragraph(line.strip("- "), style="List Bullet")
-            else:
-                doc.add_paragraph(line)
         doc.save(docx_buffer)
-        st.download_button("⬇️ Download as DOCX", data=docx_buffer.getvalue(), file_name="datasheet.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-
-        # --- PDF Export ---
-        pdf = FPDF()
-        pdf.add_page()
-        if company_logo:
-            logo_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            logo_temp.write(company_logo.getvalue())
-            logo_temp.flush()
-            pdf.image(logo_temp.name, x=10, y=8, w=30)
-            pdf.set_y(30)
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.set_font("Arial", size=11)
-        for line in datasheet.splitlines():
-            pdf.multi_cell(0, 10, line)
-        pdf_buffer = BytesIO()
-        pdf.output(pdf_buffer)
-        st.download_button("⬇️ Download as PDF", data=pdf_buffer.getvalue(), file_name="datasheet.pdf", mime="application/pdf")
-
-        # --- TXT Export ---
-        st.download_button("⬇️ Download as TXT", data=datasheet, file_name="datasheet.txt", mime="text/plain")
+        st.download_button("⬇️ Download Filled DOCX Draft", data=docx_buffer.getvalue(), file_name="sensor-datasheet-draft.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
